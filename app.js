@@ -97,7 +97,7 @@ async function play() {
   }
   do {
    const [en,ja] = LESSONS[index], rate=Number($('rate').value);
-   const stages=[{label:'聞く · 1/4',show:false,lang:'en',text:en,count:2,rate},{label:'ゆっくり · 2/4',show:true,lang:'en',text:en,count:1,rate:rate*.7},{label:'意味を確認 · 3/4',show:true,translation:true,lang:'ja',text:ja,count:1,rate:1.2},{label:'もう一度聞く · 4/4',show:true,lang:'en',text:en,count:2,rate}];
+   const stages=[{label:'聞く · 1/4',show:false,lang:'en',text:en,count:2,rate},{label:'ゆっくり · 2/4',show:true,lang:'en',text:en,count:1,rate:rate*.7},{label:'意味を確認 · 3/4',show:true,translation:true,lang:'ja',text:ja,count:1,rate:1.5},{label:'もう一度聞く · 4/4',show:true,lang:'en',text:en,count:2,rate}];
    for(const stage of stages) {
     $('english').textContent=stage.show?en:'まずは、耳で聞いてみましょう。';
     $('japanese').textContent=stage.translation?ja:'';
