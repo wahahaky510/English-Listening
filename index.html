@@ -16,7 +16,7 @@
     <div class="hero">
       <p class="eyebrow">A LITTLE ENGLISH, EVERY DAY</p>
       <h1>日常の英語を、<br class="mobile-break">耳から。</h1>
-      <p class="intro">50の小さな日常で、聞く習慣を。<br>まずは文字を見ずに、音に耳をすませましょう。</p>
+      <p class="intro">日常のフレーズで、聞く習慣を。<br>まずは文字を見ずに、音に耳をすませましょう。</p>
     </div>
     <section class="card" aria-label="リスニング練習">
       <div class="top"><span class="lesson-count">LESSON <strong id="position"></strong></span><span id="phase" class="phase">準備できました</span></div>
@@ -29,6 +29,7 @@
     <ol class="flow" aria-label="練習の順序"><li><span>01</span>まず聞く<small>英文なし・2回</small></li><li><span>02</span>ゆっくり<small>英文あり・1回</small></li><li><span>03</span>意味を知る<small>日本語・1回</small></li><li><span>04</span>もう一度<small>英語・2回</small></li></ol>
     <section class="settings" aria-labelledby="settings-title">
       <div class="section-heading"><h2 id="settings-title">自分のペースで</h2><span>LISTENING SETTINGS</span></div>
+      <label>教材<select id="course"></select></label>
       <label>練習する例文<select id="selection"></select></label>
       <details class="preferences"><summary>声・速度を調整する<span class="summary-hint">音声設定</span></summary><div class="grid"><label>英語の声<select id="enVoice"></select></label><label>日本語の声<select id="jaVoice"></select></label><label><span class="range-heading">通常の速度<output id="rateValue">1.0倍</output></span><input id="rate" type="range" min="0.6" max="1.2" step="0.1" value="1.0"><span class="range-labels"><span>ゆっくり</span><span>速く</span></span></label><label>読み上げ間隔<select id="gap"><option value="1000">1秒</option><option value="2000" selected>2秒</option><option value="3000">3秒</option></select></label></div></details>
       <label class="check"><input type="checkbox" id="random"><span>ランダムな順番で練習する</span></label>
@@ -39,6 +40,8 @@
   </main>
   <script src="data.js"></script>
   <script src="audio-manifest.js"></script>
+  <script src="intermediate-data.js"></script>
+  <script src="intermediate-audio-manifest.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

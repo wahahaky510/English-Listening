@@ -3,3 +3,4 @@ audio/*.tmp
 audio-manifest.js.tmp
 .env
 .env.*
+intermediate-audio-manifest.js.tmp

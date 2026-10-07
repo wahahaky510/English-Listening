@@ -1,27 +1,39 @@
 const $ = id => document.getElementById(id);
 const synth = window.speechSynthesis;
-const recorded = window.AUDIO_MANIFEST?.lessons?.length === LESSONS.length;
+const courses=[{id:'daily',name:'日常英語・初中級／50文',lessons:LESSONS,audio:window.AUDIO_MANIFEST}];
+if(window.INTERMEDIATE_LESSONS) courses.push({id:'intermediate',name:'日常英語・中級／100文',lessons:window.INTERMEDIATE_LESSONS,audio:window.INTERMEDIATE_AUDIO_MANIFEST});
+let course=courses[0], currentLessons=course.lessons, currentAudio=course.audio;
+let recorded=currentAudio?.lessons?.length===currentLessons.length;
+try {course=courses.find(c=>c.id===localStorage.getItem('course')) || course;} catch {}
+currentLessons=course.lessons;currentAudio=course.audio;recorded=currentAudio?.lessons?.length===currentLessons.length;
+courses.forEach(c=>$('course').add(new Option(c.name,c.id)));
+$('course').value=course.id;
 let index = 0, running = false, generation = 0, voices = [], activeCancel, recordedPlayer;
-try { index = Math.max(0, Math.min(49, Number(localStorage.getItem('lesson')) || 0)); } catch {}
-let order=Array.from({length:LESSONS.length},(_,i)=>i), cursor=index, roundComplete=false;
+try { index = Math.max(0, Math.min(currentLessons.length-1, Number(localStorage.getItem(course.id==='daily'?'lesson':'lesson:'+course.id)) || 0)); } catch {}
+let order=Array.from({length:currentLessons.length},(_,i)=>i), cursor=index, roundComplete=false;
 function shuffleOrder() {
- order=Array.from({length:LESSONS.length},(_,i)=>i);
+ order=Array.from({length:currentLessons.length},(_,i)=>i);
  if($('random').checked) {
   for(let i=order.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
   cursor=0; index=order[0];
  } else cursor=index;
  roundComplete=false;
 }
-LESSONS.forEach(([en], i) => $('selection').add(new Option(`${i+1}. ${en}`, i)));
+function fillSelection() {
+ $('selection').replaceChildren();
+ currentLessons.forEach(([en],i)=>$('selection').add(new Option(`${i+1}. ${en}`,i)));
+ $('progress').max=currentLessons.length;
+}
+fillSelection();
 function render() {
- $('position').textContent = $('random').checked ? `${cursor+1} / ${LESSONS.length} · 例文 ${index+1}` : `${index+1} / ${LESSONS.length}`;
+ $('position').textContent = $('random').checked ? `${cursor+1} / ${currentLessons.length} · 例文 ${index+1}` : `${index+1} / ${currentLessons.length}`;
  $('progress').value = cursor+1;
  $('selection').value = index;
  $('english').textContent = 'まずは、耳で聞いてみましょう。';
  $('japanese').textContent = '';
  $('prev').disabled = cursor === 0;
  $('next').disabled = cursor === order.length-1;
- try { localStorage.setItem('lesson', index); } catch {}
+ try { localStorage.setItem(course.id==='daily'?'lesson':'lesson:'+course.id, index);localStorage.setItem('course',course.id); } catch {}
 }
 function loadVoices() {
  voices = synth ? synth.getVoices() : [];
@@ -35,9 +47,10 @@ function loadVoices() {
  }
  if(recorded) {
   $('enVoice').replaceChildren(); $('enVoice').add(new Option('OpenAI · Coral（AI生成音声）','recorded'));
-  $('jaVoice').replaceChildren(); $('jaVoice').add(new Option(`OpenAI · ${window.AUDIO_MANIFEST.voices?.ja || window.AUDIO_MANIFEST.voice || 'coral'}（日本語・AI生成音声）`,'recorded'));
+  $('jaVoice').replaceChildren(); $('jaVoice').add(new Option(`OpenAI · ${currentAudio.voices?.ja || currentAudio.voice || 'coral'}（日本語・AI生成音声）`,'recorded'));
   $('enVoice').disabled=true; $('jaVoice').disabled=true; $('play').disabled=false; return;
  }
+ $('enVoice').disabled=false; $('jaVoice').disabled=false;
  $('play').disabled = !synth || !$('enVoice').value || !$('jaVoice').value;
  if ($('play').disabled) $('status').textContent = '英語・日本語の音声が必要です。端末の音声設定と対応ブラウザを確認してください。';
 }
@@ -67,7 +80,7 @@ async function playRecording(kind, rate, token) {
  activeCancel=()=>controller.abort();
  let url;
  try {
-  const response=await fetch(window.AUDIO_MANIFEST.lessons[index][kind],{signal:controller.signal});
+  const response=await fetch(currentAudio.lessons[index][kind],{signal:controller.signal});
   if(!response.ok) throw new Error(response.status===404 ? '音声ファイルが見つかりません。ページを再読み込みして、もう一度開始してください。' : '音声を読み込めませんでした。通信状態を確認してください。');
   const blob=await response.blob();
   if(token!==generation) return false;
@@ -106,7 +119,7 @@ async function play() {
    if(token!==generation) return;
   }
   do {
-   const [en,ja] = LESSONS[index], rate=Number($('rate').value);
+   const [en,ja] = currentLessons[index], rate=Number($('rate').value);
    const stages=[{label:'聞く · 1/4',show:false,lang:'en',text:en,count:2,rate},{label:'ゆっくり · 2/4',show:true,lang:'en',text:en,count:1,rate:rate*.7},{label:'意味を確認 · 3/4',show:true,translation:true,lang:'ja',text:ja,count:1,rate:1.5},{label:'もう一度聞く · 4/4',show:true,lang:'en',text:en,count:2,rate}];
    for(const stage of stages) {
     $('english').textContent=stage.show?en:'まずは、耳で聞いてみましょう。';
@@ -128,6 +141,13 @@ async function play() {
  } catch(error) { if(token===generation) { stop(); $('phase').textContent='音声エラー'; $('status').textContent=error.name==='NotAllowedError' ? 'ブラウザが音声再生をブロックしました。このサイトのサウンドを許可して、もう一度開始してください。' : error.message; } }
 }
 function move(to) { stop(); index=to; cursor=order.indexOf(to); roundComplete=false; render(); $('phase').textContent='準備できました'; $('status').textContent='開始すると、英文を隠して2回読み上げます。'; }
+$('course').onchange=()=>{
+ stop();course=courses.find(c=>c.id===$('course').value) || courses[0];
+ currentLessons=course.lessons;currentAudio=course.audio;recorded=currentAudio?.lessons?.length===currentLessons.length;
+ index=0;try {index=Math.max(0,Math.min(currentLessons.length-1,Number(localStorage.getItem(course.id==='daily'?'lesson':'lesson:'+course.id))||0));}catch{}
+ fillSelection();shuffleOrder();render();loadVoices();
+ $('phase').textContent='準備できました';$('status').textContent='開始すると、英文を隠して2回読み上げます。';
+};
 $('play').onclick=play;
 $('prev').onclick=()=>move(order[Math.max(0,cursor-1)]);
 $('next').onclick=()=>move(order[Math.min(order.length-1,cursor+1)]);

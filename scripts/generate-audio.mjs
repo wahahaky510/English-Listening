@@ -8,8 +8,13 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ctx=vm.createContext({window:{}});
 vm.runInContext(await fs.readFile(path.join(root,'data.js'),'utf8'),ctx);
-const lessons=ctx.window.LESSONS;
 const args=process.argv.slice(2);
+const course=args.includes('--course') ? args[args.indexOf('--course')+1] : 'daily';
+if(!['daily','intermediate'].includes(course)) throw new Error('Unknown course');
+if(course==='intermediate') vm.runInContext(await fs.readFile(path.join(root,'intermediate-data.js'),'utf8'),ctx);
+const lessons=course==='intermediate'?ctx.window.INTERMEDIATE_LESSONS:ctx.window.LESSONS;
+const manifestFile=course==='intermediate'?'intermediate-audio-manifest.js':'audio-manifest.js';
+const manifestVariable=course==='intermediate'?'INTERMEDIATE_AUDIO_MANIFEST':'AUDIO_MANIFEST';
 const dry=args.includes('--dry-run');
 const all=args.includes('--all');
 const model='gpt-4o-mini-tts', voice='coral';
@@ -21,17 +26,17 @@ await fs.mkdir(path.join(root,'audio'),{recursive:true});
 const records=[];
 for(let i=0;i<lessons.length;i++) {
  const record={};
- for(const [kind,column,instructions] of settings) {
+ await Promise.all(settings.map(async ([kind,column,instructions]) => {
   const body={model,voice:voices[kind],input:lessons[i][column],instructions,response_format:'mp3',...(kind==='slow'?{speed:0.7}:{})};
   const hash=crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
-  const relative=`audio/${String(i+1).padStart(2,'0')}-${kind}-${hash.slice(0,12)}.mp3`;
+  const relative=`audio/${course==='intermediate'?'intermediate-':''}${String(i+1).padStart(2,'0')}-${kind}-${hash.slice(0,12)}.mp3`;
   const destination=path.join(root,relative), stamp=destination+'.sha256';
   record[kind]=relative;
-  if(dry) continue;
-  if(!all && i>0) continue;
+  if(dry) return;
+  if(!all && i>0) return;
   let valid=false;
   try {valid=(await fs.readFile(stamp,'utf8'))===hash && (await fs.stat(destination)).size>0;} catch{}
-  if(valid) {console.log(`Reuse ${relative}`);continue;}
+  if(valid) {console.log(`Reuse ${relative}`);return;}
   const response=await fetch('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
   if(!response.ok) {
    let code='unknown', type='unknown';
@@ -44,12 +49,12 @@ for(let i=0;i<lessons.length;i++) {
   await fs.rename(destination+'.tmp',destination);
   await fs.writeFile(stamp,hash);
   console.log(`Generated ${relative}`);
- }
+ }));
  records.push(record);
 }
 if(dry) {console.log(`${lessons.length} lessons; ${records.length*3} audio files. Default generation: first lesson only; --all: full set. Model ${model}, voice ${voice}.`);process.exit(0);}
-if(!all) {console.log('First lesson sample generated. Listen to audio/01-en-*.mp3, 01-slow-*.mp3 and 01-ja-*.mp3 before generating the full set with --all. App is unchanged.');process.exit(0);}
+if(!all) {console.log(`First lesson sample generated for ${course}. Listen to its generated MP3s before generating the full set with --all. App is unchanged.`);process.exit(0);}
 const manifest={model,voice,voices,aiGenerated:true,lessons:records};
-await fs.writeFile(path.join(root,'audio-manifest.js.tmp'),`window.AUDIO_MANIFEST = ${JSON.stringify(manifest)};\n`);
-await fs.rename(path.join(root,'audio-manifest.js.tmp'),path.join(root,'audio-manifest.js'));
+await fs.writeFile(path.join(root,manifestFile+'.tmp'),`window.${manifestVariable} = ${JSON.stringify(manifest)};\n`);
+await fs.rename(path.join(root,manifestFile+'.tmp'),path.join(root,manifestFile));
 console.log('Full audio manifest saved. Audio files and manifest are public assets; API key is never included.');

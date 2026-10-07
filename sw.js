@@ -1,6 +1,6 @@
-const CACHE = 'daily-listening-v9';
+const CACHE = 'daily-listening-v10';
 const AUDIO_CACHE = 'listening-audio-v1';
-const FILES = ['./','./index.html','./style.css','./data.js','./audio-manifest.js','./app.js'];
+const FILES = ['./','./index.html','./style.css','./data.js','./audio-manifest.js','./intermediate-data.js','./intermediate-audio-manifest.js','./app.js'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('daily-listening-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', event => {

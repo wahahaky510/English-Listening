@@ -2,15 +2,19 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-function setup({auto=false,hold=false,recorded=false,missing=false}={}) {
- const elements={}, calls=[]; const requests=[];
+function setup({auto=false,hold=false,recorded=false,missing=false,intermediate=false}={}) {
+ const elements={}, calls=[]; const requests=[]; const saved=new Map();
  const get=id=>elements[id]??=( {value:'',textContent:'',checked:false,add(o){if(!this.value)this.value=o.value;},replaceChildren(){this.value='';}} );
  get('rate').value='0.9'; get('gap').value='0'; get('auto').checked=auto;
  const voices=[{lang:'en-US',name:'English',voiceURI:'en',localService:true},{lang:'ja-JP',name:'Japanese',voiceURI:'ja',localService:true}];
  const synth={getVoices:()=>voices,cancel(){},speak(u){calls.push({text:u.text,lang:u.lang,rate:u.rate,english:get('english').textContent,japanese:get('japanese').textContent});if(!hold)queueMicrotask(()=>u.onend());}};
- const context=vm.createContext({document:{getElementById:get},window:{speechSynthesis:synth},SpeechSynthesisUtterance:function(text){this.text=text;},Option:function(text,value){this.text=text;this.value=value;},localStorage:{getItem(){return null;},setItem(){}},navigator:{},setTimeout,console, AbortController, URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},fetch:async url=>{requests.push(url);return {ok:!missing,blob:async()=>({})};},Audio:function(url){this.pause=()=>{};this.removeAttribute=()=>{};this.load=()=>{};this.play=()=>{if(!this.src?.startsWith('data:')) {calls.push({url:this.src || url,rate:this.playbackRate,english:get("english").textContent});if(!hold)queueMicrotask(()=>this.onended());}return Promise.resolve();};}});
+ const context=vm.createContext({document:{getElementById:get},window:{speechSynthesis:synth},SpeechSynthesisUtterance:function(text){this.text=text;},Option:function(text,value){this.text=text;this.value=value;},localStorage:{getItem(key){return saved.get(key)??null;},setItem(key,value){saved.set(key,String(value));}},navigator:{},setTimeout,console, AbortController, URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},fetch:async url=>{requests.push(url);return {ok:!missing,blob:async()=>({})};},Audio:function(url){this.pause=()=>{};this.removeAttribute=()=>{};this.load=()=>{};this.play=()=>{if(!this.src?.startsWith('data:')) {calls.push({url:this.src || url,rate:this.playbackRate,english:get("english").textContent});if(!hold)queueMicrotask(()=>this.onended());}return Promise.resolve();};}});
  vm.runInContext(fs.readFileSync('data.js','utf8'),context); context.LESSONS=context.window.LESSONS;
  if(recorded) context.window.AUDIO_MANIFEST={lessons:Array.from({length:50},(_,i)=>({en:`${i}-en.mp3`,slow:`${i}-slow.mp3`,ja:`${i}-ja.mp3`}))};
+ if(intermediate) {
+  vm.runInContext(fs.readFileSync('intermediate-data.js','utf8'),context);
+  context.window.INTERMEDIATE_AUDIO_MANIFEST={voices:{ja:'shimmer'},lessons:Array.from({length:100},(_,i)=>({en:`mid-${i}-en.mp3`,slow:`mid-${i}-slow.mp3`,ja:`mid-${i}-ja.mp3`}))};
+ }
  vm.runInContext(fs.readFileSync('app.js','utf8'),context);
  return {get,calls,context,requests};
 }
@@ -109,4 +113,32 @@ test('stopping random playback keeps the same lesson on restart',async()=>{
  const pending2=get('play').onclick();await new Promise(r=>setImmediate(r));
  await get('play').onclick();await pending2;
  assert.equal(requests[0],requests[1]);
+});
+
+test('switching courses uses corresponding audio and restores independent lesson positions',async()=>{
+ const {get,requests}=setup({recorded:true,intermediate:true});
+ get('selection').value='7';get('selection').onchange();
+ get('course').value='intermediate';get('course').onchange();
+ assert.equal(get('position').textContent,'1 / 100');assert.equal(get('progress').max,100);
+ get('selection').value='99';get('selection').onchange();
+ await get('play').onclick();
+ assert.deepEqual(requests,['mid-99-en.mp3','mid-99-en.mp3','mid-99-slow.mp3','mid-99-ja.mp3','mid-99-en.mp3','mid-99-en.mp3']);
+ get('course').value='daily';get('course').onchange();
+ assert.equal(get('progress').max,50);assert.equal(get('position').textContent,'8 / 50');
+});
+test('intermediate random round visits all 100 lessons without repeats',async()=>{
+ const {get,requests}=setup({recorded:true,intermediate:true,auto:true});
+ get('course').value='intermediate';get('course').onchange();
+ get('random').checked=true;get('random').onchange();
+ await get('play').onclick();
+ assert.equal(requests.length,600);
+ assert.equal(new Set(requests.filter((_,i)=>i%6===0)).size,100);
+ assert.equal(get('phase').textContent,'完了');
+});
+test('changing course during playback cancels the old sequence',async()=>{
+ const {get,requests}=setup({recorded:true,intermediate:true,hold:true});
+ const pending=get('play').onclick();await new Promise(r=>setImmediate(r));
+ get('course').value='intermediate';get('course').onchange();await pending;
+ assert.equal(requests.length,1);
+ assert.equal(get('position').textContent,'1 / 100');
 });
