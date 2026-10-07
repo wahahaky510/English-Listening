@@ -21,7 +21,7 @@ const records=[];
 for(let i=0;i<lessons.length;i++) {
  const record={};
  for(const [kind,column,instructions] of settings) {
-  const body={model,voice,input:lessons[i][column],instructions,response_format:'mp3'};
+  const body={model,voice,input:lessons[i][column],instructions,response_format:'mp3',...(kind==='slow'?{speed:0.7}:{})};
   const hash=crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
   const relative=`audio/${String(i+1).padStart(2,'0')}-${kind}-${hash.slice(0,12)}.mp3`;
   const destination=path.join(root,relative), stamp=destination+'.sha256';
