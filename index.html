@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f5f0">
+  <title>Daily Listening — 日常の英語を、耳から。</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <a class="brand" href="./" aria-label="Daily Listening ホーム"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>daily listening<span class="brand-dot">.</span></a>
+      <span class="connection" id="connection"></span>
+    </header>
+    <div class="hero">
+      <p class="eyebrow">A LITTLE ENGLISH, EVERY DAY</p>
+      <h1>日常の英語を、<br class="mobile-break">耳から。</h1>
+      <p class="intro">50の小さな日常で、聞く習慣を。<br>まずは文字を見ずに、音に耳をすませましょう。</p>
+    </div>
+    <section class="card" aria-label="リスニング練習">
+      <div class="top"><span class="lesson-count">LESSON <strong id="position"></strong></span><span id="phase" class="phase">準備できました</span></div>
+      <progress id="progress" aria-label="例文の進み具合" max="50" value="1"></progress>
+      <div class="sentence"><span class="sentence-label" aria-hidden="true">LISTEN & LEARN</span><p id="english" lang="en"></p><p id="japanese"></p></div>
+      <p id="status" role="status" aria-live="polite">開始すると、英文を隠して2回読み上げます。</p>
+      <div class="controls"><button id="prev" class="skip" aria-label="前の例文">←</button><button id="play" class="primary">練習を開始</button><button id="next" class="skip" aria-label="次の例文">→</button></div>
+      <div class="control-caption" aria-hidden="true"><span>前の例文</span><span>次の例文</span></div>
+    </section>
+    <ol class="flow" aria-label="練習の順序"><li><span>01</span>まず聞く<small>英文なし・2回</small></li><li><span>02</span>ゆっくり<small>英文あり・1回</small></li><li><span>03</span>意味を知る<small>日本語・1回</small></li><li><span>04</span>もう一度<small>英語・2回</small></li></ol>
+    <section class="settings" aria-labelledby="settings-title">
+      <div class="section-heading"><h2 id="settings-title">自分のペースで</h2><span>LISTENING SETTINGS</span></div>
+      <label>練習する例文<select id="selection"></select></label>
+      <details class="preferences"><summary>声・速度を調整する<span class="summary-hint">音声設定</span></summary><div class="grid"><label>英語の声<select id="enVoice"></select></label><label>日本語の声<select id="jaVoice"></select></label><label><span class="range-heading">通常の速度<output id="rateValue">0.9倍</output></span><input id="rate" type="range" min="0.6" max="1.2" step="0.1" value="0.9"><span class="range-labels"><span>ゆっくり</span><span>速く</span></span></label><label>読み上げ間隔<select id="gap"><option value="1000">1秒</option><option value="2000" selected>2秒</option><option value="3000">3秒</option></select></label></div></details>
+      <label class="check"><input type="checkbox" id="auto" checked><span>次の例文へ自動で進む</span></label>
+      <details class="help"><summary>使い方とオフライン利用</summary><p>上の4ステップで、ひとつの例文を練習します。ゆっくり再生は通常速度の70%。停止後の再開は、その例文の最初からです。</p><p>「端末内」の声を選ぶと、音声の通信を避けられます。声がない場合は端末の設定で英語・日本語の音声をダウンロードしてください。初回アクセス後、アプリ本体をオフライン用に保存します。端末やブラウザによって読み上げの対応状況は異なります。</p></details>
+    </section>
+    <footer><span class="footer-line"></span>ひとつずつ、自分のペースで。<span class="footer-brand">DAILY LISTENING</span></footer>
+  </main>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
