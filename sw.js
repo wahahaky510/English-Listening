@@ -1,4 +1,4 @@
-const CACHE = 'daily-listening-v8';
+const CACHE = 'daily-listening-v9';
 const AUDIO_CACHE = 'listening-audio-v1';
 const FILES = ['./','./index.html','./style.css','./data.js','./audio-manifest.js','./app.js'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())); });

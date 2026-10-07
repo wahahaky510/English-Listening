@@ -71,3 +71,42 @@ test('recorded audio stops during playback',async()=>{
  assert.equal(calls.length,1);
  assert.equal(get('phase').textContent,'停止中');
 });
+
+test('random automatic playback visits every lesson once with its original six-step sequence',async()=>{
+ const {get,requests}=setup({recorded:true,auto:true});
+ get('random').checked=true;get('random').onchange();
+ await get('play').onclick();
+ assert.equal(requests.length,300);
+ const visited=[];
+ for(let i=0;i<requests.length;i+=6){
+  const id=Number(requests[i].split('-')[0]);visited.push(id);
+  assert.deepEqual(requests.slice(i,i+6),[`${id}-en.mp3`,`${id}-en.mp3`,`${id}-slow.mp3`,`${id}-ja.mp3`,`${id}-en.mp3`,`${id}-en.mp3`]);
+ }
+ assert.equal(new Set(visited).size,50);
+ assert.equal(get('phase').textContent,'完了');
+ assert.equal(get('next').disabled,true);
+ // Starting again creates another complete round.
+ await get('play').onclick();
+ assert.equal(requests.length,600);
+ assert.equal(new Set(requests.slice(300).filter((_,i)=>i%6===0)).size,50);
+});
+test('random navigation goes back to the same lesson; switching off restores numeric order',()=>{
+ const {get}=setup();
+ get('random').checked=true;get('random').onchange();
+ const first=get('selection').value;
+ get('next').onclick();const second=get('selection').value;
+ assert.notEqual(first,second);
+ get('prev').onclick();assert.equal(get('selection').value,first);
+ get('random').checked=false;get('random').onchange();
+ const before=Number(get('selection').value);
+ if(before<49){get('next').onclick();assert.equal(get('selection').value,before+1);}
+});
+test('stopping random playback keeps the same lesson on restart',async()=>{
+ const {get,requests}=setup({recorded:true,hold:true});
+ get('random').checked=true;get('random').onchange();
+ const pending=get('play').onclick();await new Promise(r=>setImmediate(r));
+ await get('play').onclick();await pending;
+ const pending2=get('play').onclick();await new Promise(r=>setImmediate(r));
+ await get('play').onclick();await pending2;
+ assert.equal(requests[0],requests[1]);
+});

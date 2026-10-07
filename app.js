@@ -3,15 +3,24 @@ const synth = window.speechSynthesis;
 const recorded = window.AUDIO_MANIFEST?.lessons?.length === LESSONS.length;
 let index = 0, running = false, generation = 0, voices = [], activeCancel, recordedPlayer;
 try { index = Math.max(0, Math.min(49, Number(localStorage.getItem('lesson')) || 0)); } catch {}
+let order=Array.from({length:LESSONS.length},(_,i)=>i), cursor=index, roundComplete=false;
+function shuffleOrder() {
+ order=Array.from({length:LESSONS.length},(_,i)=>i);
+ if($('random').checked) {
+  for(let i=order.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  cursor=0; index=order[0];
+ } else cursor=index;
+ roundComplete=false;
+}
 LESSONS.forEach(([en], i) => $('selection').add(new Option(`${i+1}. ${en}`, i)));
 function render() {
- $('position').textContent = `${index+1} / ${LESSONS.length}`;
- $('progress').value = index+1;
+ $('position').textContent = $('random').checked ? `${cursor+1} / ${LESSONS.length} · 例文 ${index+1}` : `${index+1} / ${LESSONS.length}`;
+ $('progress').value = cursor+1;
  $('selection').value = index;
  $('english').textContent = 'まずは、耳で聞いてみましょう。';
  $('japanese').textContent = '';
- $('prev').disabled = index === 0;
- $('next').disabled = index === LESSONS.length-1;
+ $('prev').disabled = cursor === 0;
+ $('next').disabled = cursor === order.length-1;
  try { localStorage.setItem('lesson', index); } catch {}
 }
 function loadVoices() {
@@ -84,6 +93,7 @@ async function playRecording(kind, rate, token) {
 }
 async function play() {
  if(running) { stop(); $('phase').textContent='停止中'; $('status').textContent='再開すると、この例文の最初から練習します。'; return; }
+ if($('random').checked && roundComplete) {shuffleOrder();render();}
  running=true; const token=++generation;
  $('play').textContent='停止';
  try {
@@ -110,16 +120,18 @@ async function play() {
      if(token!==generation) return;
     }
    }
-   if(!$('auto').checked || index===LESSONS.length-1) break;
-   index++; render();
+   if(cursor===order.length-1) {roundComplete=true;break;}
+   if(!$('auto').checked) break;
+   cursor++; index=order[cursor]; render();
   } while(token===generation);
   if(token===generation) { stop(); $('phase').textContent='完了'; $('status').textContent='この練習が終わりました。もう一度聞くこともできます。'; }
  } catch(error) { if(token===generation) { stop(); $('phase').textContent='音声エラー'; $('status').textContent=error.name==='NotAllowedError' ? 'ブラウザが音声再生をブロックしました。このサイトのサウンドを許可して、もう一度開始してください。' : error.message; } }
 }
-function move(to) { stop(); index=to; render(); $('phase').textContent='準備できました'; $('status').textContent='開始すると、英文を隠して2回読み上げます。'; }
+function move(to) { stop(); index=to; cursor=order.indexOf(to); roundComplete=false; render(); $('phase').textContent='準備できました'; $('status').textContent='開始すると、英文を隠して2回読み上げます。'; }
 $('play').onclick=play;
-$('prev').onclick=()=>move(Math.max(0,index-1));
-$('next').onclick=()=>move(Math.min(LESSONS.length-1,index+1));
+$('prev').onclick=()=>move(order[Math.max(0,cursor-1)]);
+$('next').onclick=()=>move(order[Math.min(order.length-1,cursor+1)]);
+$('random').onchange=()=>{stop();shuffleOrder();render();$('phase').textContent='準備できました';$('status').textContent=$('random').checked?'ランダム順で全例文を1回ずつ練習します。':'例文の番号順で練習します。';};
 $('selection').onchange=()=>move(Number($('selection').value));
 $('rate').oninput=()=>{$('rateValue').textContent=`${$('rate').value}倍`;};
 if(synth) synth.onvoiceschanged=loadVoices;
