@@ -13,7 +13,8 @@ const args=process.argv.slice(2);
 const dry=args.includes('--dry-run');
 const all=args.includes('--all');
 const model='gpt-4o-mini-tts', voice='coral';
-const settings=[['en',0,'Speak in natural conversational American English, with warm, clear delivery. Read only the supplied sentence.'],['slow',0,'Speak in natural American English, slowly and clearly for a language learner. Keep natural word connections and intonation. Do not spell words or add explanations. Read only the supplied sentence.'],['ja',1,'Speak in natural Japanese, with clear, warm conversational delivery. Read only the supplied sentence.']];
+const voices={en:'coral',slow:'coral',ja:'shimmer'};
+const settings=[['en',0,'Speak in natural conversational American English, with warm, clear delivery. Read only the supplied sentence.'],['slow',0,'Speak in natural American English, slowly and clearly for a language learner. Keep natural word connections and intonation. Do not spell words or add explanations. Read only the supplied sentence.'],['ja',1,'日本語の母語話者が親しい相手に話すように、標準的な日本語の自然なアクセントと滑らかなイントネーションで読んでください。落ち着いた明るい声で、日常会話の速さにしてください。単語や音節を一つずつ区切らず、意味のまとまりで話してください。語尾を不自然に引き伸ばさず、句読点で短く自然に間を取ってください。英語風のアクセント、棒読み、過剰な演技は避けてください。入力された日本語だけを読み、説明や挨拶は追加しないでください。']];
 const key=process.env.LISTENING_TTS_API_KEY || process.env.OPENAI_API_KEY;
 if(!dry && !key) {console.error('Missing LISTENING_TTS_API_KEY. Set it securely; never put it in repository files.');process.exit(1);}
 await fs.mkdir(path.join(root,'audio'),{recursive:true});
@@ -21,7 +22,7 @@ const records=[];
 for(let i=0;i<lessons.length;i++) {
  const record={};
  for(const [kind,column,instructions] of settings) {
-  const body={model,voice,input:lessons[i][column],instructions,response_format:'mp3',...(kind==='slow'?{speed:0.7}:{})};
+  const body={model,voice:voices[kind],input:lessons[i][column],instructions,response_format:'mp3',...(kind==='slow'?{speed:0.7}:{})};
   const hash=crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
   const relative=`audio/${String(i+1).padStart(2,'0')}-${kind}-${hash.slice(0,12)}.mp3`;
   const destination=path.join(root,relative), stamp=destination+'.sha256';
@@ -48,7 +49,7 @@ for(let i=0;i<lessons.length;i++) {
 }
 if(dry) {console.log(`${lessons.length} lessons; ${records.length*3} audio files. Default generation: first lesson only; --all: full set. Model ${model}, voice ${voice}.`);process.exit(0);}
 if(!all) {console.log('First lesson sample generated. Listen to audio/01-en-*.mp3, 01-slow-*.mp3 and 01-ja-*.mp3 before generating the full set with --all. App is unchanged.');process.exit(0);}
-const manifest={model,voice,aiGenerated:true,lessons:records};
+const manifest={model,voice,voices,aiGenerated:true,lessons:records};
 await fs.writeFile(path.join(root,'audio-manifest.js.tmp'),`window.AUDIO_MANIFEST = ${JSON.stringify(manifest)};\n`);
 await fs.rename(path.join(root,'audio-manifest.js.tmp'),path.join(root,'audio-manifest.js'));
 console.log('Full audio manifest saved. Audio files and manifest are public assets; API key is never included.');

@@ -26,7 +26,7 @@ function loadVoices() {
  }
  if(recorded) {
   $('enVoice').replaceChildren(); $('enVoice').add(new Option('OpenAI · Coral（AI生成音声）','recorded'));
-  $('jaVoice').replaceChildren(); $('jaVoice').add(new Option('OpenAI · Coral（AI生成音声）','recorded'));
+  $('jaVoice').replaceChildren(); $('jaVoice').add(new Option(`OpenAI · ${window.AUDIO_MANIFEST.voices?.ja || window.AUDIO_MANIFEST.voice || 'coral'}（日本語・AI生成音声）`,'recorded'));
   $('enVoice').disabled=true; $('jaVoice').disabled=true; $('play').disabled=false; return;
  }
  $('play').disabled = !synth || !$('enVoice').value || !$('jaVoice').value;
