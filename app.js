@@ -1,7 +1,7 @@
 const $ = id => document.getElementById(id);
 const synth = window.speechSynthesis;
 const recorded = window.AUDIO_MANIFEST?.lessons?.length === LESSONS.length;
-let index = 0, running = false, generation = 0, voices = [], activeCancel;
+let index = 0, running = false, generation = 0, voices = [], activeCancel, recordedPlayer;
 try { index = Math.max(0, Math.min(49, Number(localStorage.getItem('lesson')) || 0)); } catch {}
 LESSONS.forEach(([en], i) => $('selection').add(new Option(`${i+1}. ${en}`, i)));
 function render() {
@@ -59,12 +59,13 @@ async function playRecording(kind, rate, token) {
  let url;
  try {
   const response=await fetch(window.AUDIO_MANIFEST.lessons[index][kind],{signal:controller.signal});
-  if(!response.ok) throw new Error('音声を読み込めませんでした。通信状態を確認してください。');
+  if(!response.ok) throw new Error(response.status===404 ? '音声ファイルが見つかりません。ページを再読み込みして、もう一度開始してください。' : '音声を読み込めませんでした。通信状態を確認してください。');
   const blob=await response.blob();
   if(token!==generation) return false;
   url=URL.createObjectURL(blob);
   return await new Promise((resolve,reject) => {
-   const audio=new Audio(url);
+   const audio=recordedPlayer || new Audio();
+   audio.src=url;
    audio.playbackRate=rate;
    let settled=false;
    const finish=(ok,error)=>{if(settled)return;settled=true;activeCancel=null;audio.pause();audio.removeAttribute('src');audio.load();error?reject(error):resolve(ok);};
@@ -86,6 +87,14 @@ async function play() {
  running=true; const token=++generation;
  $('play').textContent='停止';
  try {
+  if(recorded) {
+   recordedPlayer ||= new Audio();
+   recordedPlayer.src='data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
+   // Start this same player during the click, before any network await.
+   await recordedPlayer.play();
+   recordedPlayer.pause();
+   if(token!==generation) return;
+  }
   do {
    const [en,ja] = LESSONS[index], rate=Number($('rate').value);
    const stages=[{label:'聞く · 1/4',show:false,lang:'en',text:en,count:2,rate},{label:'ゆっくり · 2/4',show:true,lang:'en',text:en,count:1,rate:rate*.7},{label:'意味を確認 · 3/4',show:true,translation:true,lang:'ja',text:ja,count:1,rate:1},{label:'もう一度聞く · 4/4',show:true,lang:'en',text:en,count:2,rate}];
@@ -105,7 +114,7 @@ async function play() {
    index++; render();
   } while(token===generation);
   if(token===generation) { stop(); $('phase').textContent='完了'; $('status').textContent='この練習が終わりました。もう一度聞くこともできます。'; }
- } catch(error) { if(token===generation) { stop(); $('phase').textContent='音声エラー'; $('status').textContent=error.message; } }
+ } catch(error) { if(token===generation) { stop(); $('phase').textContent='音声エラー'; $('status').textContent=error.name==='NotAllowedError' ? 'ブラウザが音声再生をブロックしました。このサイトのサウンドを許可して、もう一度開始してください。' : error.message; } }
 }
 function move(to) { stop(); index=to; render(); $('phase').textContent='準備できました'; $('status').textContent='開始すると、英文を隠して2回読み上げます。'; }
 $('play').onclick=play;
@@ -115,4 +124,4 @@ $('selection').onchange=()=>move(Number($('selection').value));
 $('rate').oninput=()=>{$('rateValue').textContent=`${$('rate').value}倍`;};
 if(synth) synth.onvoiceschanged=loadVoices;
 render(); loadVoices();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{$('connection').textContent=recorded?'AI音声・再生分を保存':'アプリ保存済み';}).catch(()=>{$('connection').textContent='オフライン保存不可';});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'}).then(()=>navigator.serviceWorker.ready).then(()=>{$('connection').textContent=recorded?'AI音声・再生分を保存':'アプリ保存済み';}).catch(()=>{$('connection').textContent='オフライン保存不可';});
