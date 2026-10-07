@@ -25,7 +25,9 @@ jobs:
       - name: Prepare site
         run: |
           mkdir _site
-          cp index.html style.css data.js app.js sw.js _site/
+          cp index.html style.css data.js app.js sw.js audio-manifest.js _site/
+          cp -r audio _site/
+          find _site/audio -type f ! -name "*.mp3" -delete
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

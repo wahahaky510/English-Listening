@@ -1,0 +1,5 @@
+audio/*.sha256
+audio/*.tmp
+audio-manifest.js.tmp
+.env
+.env.*

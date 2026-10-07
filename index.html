@@ -32,11 +32,12 @@
       <label>練習する例文<select id="selection"></select></label>
       <details class="preferences"><summary>声・速度を調整する<span class="summary-hint">音声設定</span></summary><div class="grid"><label>英語の声<select id="enVoice"></select></label><label>日本語の声<select id="jaVoice"></select></label><label><span class="range-heading">通常の速度<output id="rateValue">0.9倍</output></span><input id="rate" type="range" min="0.6" max="1.2" step="0.1" value="0.9"><span class="range-labels"><span>ゆっくり</span><span>速く</span></span></label><label>読み上げ間隔<select id="gap"><option value="1000">1秒</option><option value="2000" selected>2秒</option><option value="3000">3秒</option></select></label></div></details>
       <label class="check"><input type="checkbox" id="auto" checked><span>次の例文へ自動で進む</span></label>
-      <details class="help"><summary>使い方とオフライン利用</summary><p>上の4ステップで、ひとつの例文を練習します。ゆっくり再生は通常速度の70%。停止後の再開は、その例文の最初からです。</p><p>「端末内」の声を選ぶと、音声の通信を避けられます。声がない場合は端末の設定で英語・日本語の音声をダウンロードしてください。初回アクセス後、アプリ本体をオフライン用に保存します。端末やブラウザによって読み上げの対応状況は異なります。</p></details>
+      <details class="help"><summary>使い方とオフライン利用</summary><p>上の4ステップで、ひとつの例文を練習します。端末音声のゆっくり再生は通常速度の70%。OpenAI音声では、ゆっくり話した専用音声を再生します。停止後の再開は、その例文の最初からです。</p><p>OpenAI音声はAIが生成した音声です。音声が用意されている場合は保存ファイルを再生し、一度再生した音声をオフライン用に保存します。保存はブラウザの容量制限等で解除される場合があります。</p><p>端末音声モードでは、「端末内」の声を選ぶと、音声の通信を避けられます。声がない場合は端末の設定で英語・日本語の音声をダウンロードしてください。初回アクセス後、アプリ本体をオフライン用に保存します。端末やブラウザによって読み上げの対応状況は異なります。</p></details>
     </section>
     <footer><span class="footer-line"></span>ひとつずつ、自分のペースで。<span class="footer-brand">DAILY LISTENING</span></footer>
   </main>
   <script src="data.js"></script>
+  <script src="audio-manifest.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

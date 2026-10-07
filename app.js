@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 const synth = window.speechSynthesis;
+const recorded = window.AUDIO_MANIFEST?.lessons?.length === LESSONS.length;
 let index = 0, running = false, generation = 0, voices = [], activeCancel;
 try { index = Math.max(0, Math.min(49, Number(localStorage.getItem('lesson')) || 0)); } catch {}
 LESSONS.forEach(([en], i) => $('selection').add(new Option(`${i+1}. ${en}`, i)));
@@ -22,6 +23,11 @@ function loadVoices() {
   for(const v of matches) select.add(new Option(`${v.name} (${v.localService?'端末内':'通信が必要な場合あり'})`, v.voiceURI));
   if(!matches.length) select.add(new Option('対応する音声がありません', ''));
   if(matches.some(v=>v.voiceURI===previous)) select.value = previous;
+ }
+ if(recorded) {
+  $('enVoice').replaceChildren(); $('enVoice').add(new Option('OpenAI · Coral（AI生成音声）','recorded'));
+  $('jaVoice').replaceChildren(); $('jaVoice').add(new Option('OpenAI · Coral（AI生成音声）','recorded'));
+  $('enVoice').disabled=true; $('jaVoice').disabled=true; $('play').disabled=false; return;
  }
  $('play').disabled = !synth || !$('enVoice').value || !$('jaVoice').value;
  if ($('play').disabled) $('status').textContent = '英語・日本語の音声が必要です。端末の音声設定と対応ブラウザを確認してください。';
@@ -47,6 +53,34 @@ function speak(text, lang, rate, token) {
   synth.speak(utterance);
  });
 }
+async function playRecording(kind, rate, token) {
+ const controller=new AbortController();
+ activeCancel=()=>controller.abort();
+ let url;
+ try {
+  const response=await fetch(window.AUDIO_MANIFEST.lessons[index][kind],{signal:controller.signal});
+  if(!response.ok) throw new Error('音声を読み込めませんでした。通信状態を確認してください。');
+  const blob=await response.blob();
+  if(token!==generation) return false;
+  url=URL.createObjectURL(blob);
+  return await new Promise((resolve,reject) => {
+   const audio=new Audio(url);
+   audio.playbackRate=rate;
+   let settled=false;
+   const finish=(ok,error)=>{if(settled)return;settled=true;activeCancel=null;audio.pause();audio.removeAttribute('src');audio.load();error?reject(error):resolve(ok);};
+   activeCancel=()=>finish(false);
+   audio.onended=()=>finish(token===generation);
+   audio.onerror=()=>finish(false,new Error('保存音声を再生できませんでした。'));
+   audio.play().catch(()=>finish(false,new Error('音声の再生ができませんでした。もう一度「練習を開始」を押してください。')));
+  });
+ } catch(error) {
+  if(token!==generation) return false;
+  throw error;
+ } finally {
+  if(url) URL.revokeObjectURL(url);
+  if(token===generation) activeCancel=null;
+ }
+}
 async function play() {
  if(running) { stop(); $('phase').textContent='停止中'; $('status').textContent='再開すると、この例文の最初から練習します。'; return; }
  running=true; const token=++generation;
@@ -61,7 +95,8 @@ async function play() {
     $('phase').textContent=stage.label;
     for(let n=0;n<stage.count;n++) {
      $('status').textContent=`${stage.lang==='en'?'英語':'日本語'}を読み上げ中 · ${n+1}/${stage.count}回`;
-     if(!await speak(stage.text,stage.lang,stage.rate,token)) return;
+     const ok = recorded ? await playRecording(stage.lang==='ja'?'ja':stage.rate===rate*.7?'slow':'en',stage.lang==='ja'?1:rate,token) : await speak(stage.text,stage.lang,stage.rate,token);
+     if(!ok) return;
      await new Promise(resolve=>setTimeout(resolve,Number($('gap').value)));
      if(token!==generation) return;
     }
@@ -80,4 +115,4 @@ $('selection').onchange=()=>move(Number($('selection').value));
 $('rate').oninput=()=>{$('rateValue').textContent=`${$('rate').value}倍`;};
 if(synth) synth.onvoiceschanged=loadVoices;
 render(); loadVoices();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{$('connection').textContent='オフライン保存済み';}).catch(()=>{$('connection').textContent='オフライン保存不可';});
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{$('connection').textContent=recorded?'AI音声・再生分を保存':'アプリ保存済み';}).catch(()=>{$('connection').textContent='オフライン保存不可';});

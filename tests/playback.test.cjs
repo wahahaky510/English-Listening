@@ -2,16 +2,17 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-function setup({auto=false,hold=false}={}) {
- const elements={}, calls=[];
+function setup({auto=false,hold=false,recorded=false,missing=false}={}) {
+ const elements={}, calls=[]; const requests=[];
  const get=id=>elements[id]??=( {value:'',textContent:'',checked:false,add(o){if(!this.value)this.value=o.value;},replaceChildren(){this.value='';}} );
  get('rate').value='0.9'; get('gap').value='0'; get('auto').checked=auto;
  const voices=[{lang:'en-US',name:'English',voiceURI:'en',localService:true},{lang:'ja-JP',name:'Japanese',voiceURI:'ja',localService:true}];
  const synth={getVoices:()=>voices,cancel(){},speak(u){calls.push({text:u.text,lang:u.lang,rate:u.rate,english:get('english').textContent,japanese:get('japanese').textContent});if(!hold)queueMicrotask(()=>u.onend());}};
- const context=vm.createContext({document:{getElementById:get},window:{speechSynthesis:synth},SpeechSynthesisUtterance:function(text){this.text=text;},Option:function(text,value){this.text=text;this.value=value;},localStorage:{getItem(){return null;},setItem(){}},navigator:{},setTimeout,console});
+ const context=vm.createContext({document:{getElementById:get},window:{speechSynthesis:synth},SpeechSynthesisUtterance:function(text){this.text=text;},Option:function(text,value){this.text=text;this.value=value;},localStorage:{getItem(){return null;},setItem(){}},navigator:{},setTimeout,console, AbortController, URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},fetch:async url=>{requests.push(url);return {ok:!missing,blob:async()=>({})};},Audio:function(url){this.pause=()=>{};this.removeAttribute=()=>{};this.load=()=>{};this.play=()=>{calls.push({url,rate:this.playbackRate,english:get("english").textContent});if(!hold)queueMicrotask(()=>this.onended());return Promise.resolve();};}});
  vm.runInContext(fs.readFileSync('data.js','utf8'),context); context.LESSONS=context.window.LESSONS;
+ if(recorded) context.window.AUDIO_MANIFEST={lessons:Array.from({length:50},(_,i)=>({en:`${i}-en.mp3`,slow:`${i}-slow.mp3`,ja:`${i}-ja.mp3`}))};
  vm.runInContext(fs.readFileSync('app.js','utf8'),context);
- return {get,calls,context};
+ return {get,calls,context,requests};
 }
 test('50 lessons and exact six-utterance sequence with visibility and slow rate',async()=>{
  const {get,calls,context}=setup();
@@ -45,4 +46,28 @@ test('automatic progression stops at final lesson',async()=>{
  assert.equal(calls.length,12);
  assert.equal(get('position').textContent,'50 / 50');
  assert.equal(get('phase').textContent,'完了');
+});
+
+test('recorded audio follows all six steps without using device speech',async()=>{
+ const {get,calls,requests}=setup({recorded:true});
+ await get('play').onclick();
+ assert.deepEqual(requests,['0-en.mp3','0-en.mp3','0-slow.mp3','0-ja.mp3','0-en.mp3','0-en.mp3']);
+ assert.equal(calls.length,6);
+ assert.ok(calls.every(c=>c.url==='blob:test'));
+ assert.deepEqual(calls.map(c=>c.rate),[.9,.9,.9,1,.9,.9]);
+ assert.equal(get('phase').textContent,'完了');
+});
+test('missing recorded file reports error without silent device speech fallback',async()=>{
+ const {get,calls}=setup({recorded:true,missing:true});
+ await get('play').onclick();
+ assert.equal(calls.length,0);
+ assert.equal(get('phase').textContent,'音声エラー');
+});
+test('recorded audio stops during playback',async()=>{
+ const {get,calls}=setup({recorded:true,hold:true});
+ const pending=get('play').onclick();
+ await new Promise(resolve=>setImmediate(resolve));
+ await get('play').onclick();await pending;
+ assert.equal(calls.length,1);
+ assert.equal(get('phase').textContent,'停止中');
 });
