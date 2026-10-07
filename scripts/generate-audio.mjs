@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises';
+import {setGlobalProxyFromEnv} from 'node:http';
+setGlobalProxyFromEnv();
 import path from 'node:path';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
@@ -30,7 +32,11 @@ for(let i=0;i<lessons.length;i++) {
   try {valid=(await fs.readFile(stamp,'utf8'))===hash && (await fs.stat(destination)).size>0;} catch{}
   if(valid) {console.log(`Reuse ${relative}`);continue;}
   const response=await fetch('https://api.openai.com/v1/audio/speech',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(120000)});
-  if(!response.ok) {console.error(`Audio generation failed: HTTP ${response.status}. Check API billing, permissions, and connectivity. No manifest was published.`);process.exit(1);}
+  if(!response.ok) {
+   let code='unknown', type='unknown';
+   try {const failure=await response.json();code=failure.error?.code || code;type=failure.error?.type || type;}catch{}
+   console.error(`Audio generation failed: HTTP ${response.status}, code=${code}, type=${type}. No manifest was published.`);process.exit(1);
+  }
   const buffer=Buffer.from(await response.arrayBuffer());
   if(!buffer.length || !response.headers.get('content-type')?.startsWith('audio/')) {console.error('Unexpected audio response; stopping.');process.exit(1);}
   await fs.writeFile(destination+'.tmp',buffer);
