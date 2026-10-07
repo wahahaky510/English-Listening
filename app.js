@@ -97,14 +97,14 @@ async function play() {
   }
   do {
    const [en,ja] = LESSONS[index], rate=Number($('rate').value);
-   const stages=[{label:'聞く · 1/4',show:false,lang:'en',text:en,count:2,rate},{label:'ゆっくり · 2/4',show:true,lang:'en',text:en,count:1,rate:rate*.7},{label:'意味を確認 · 3/4',show:true,translation:true,lang:'ja',text:ja,count:1,rate:1},{label:'もう一度聞く · 4/4',show:true,lang:'en',text:en,count:2,rate}];
+   const stages=[{label:'聞く · 1/4',show:false,lang:'en',text:en,count:2,rate},{label:'ゆっくり · 2/4',show:true,lang:'en',text:en,count:1,rate:rate*.7},{label:'意味を確認 · 3/4',show:true,translation:true,lang:'ja',text:ja,count:1,rate:1.2},{label:'もう一度聞く · 4/4',show:true,lang:'en',text:en,count:2,rate}];
    for(const stage of stages) {
     $('english').textContent=stage.show?en:'まずは、耳で聞いてみましょう。';
     $('japanese').textContent=stage.translation?ja:'';
     $('phase').textContent=stage.label;
     for(let n=0;n<stage.count;n++) {
      $('status').textContent=`${stage.lang==='en'?'英語':'日本語'}を読み上げ中 · ${n+1}/${stage.count}回`;
-     const ok = recorded ? await playRecording(stage.lang==='ja'?'ja':stage.rate===rate*.7?'slow':'en',stage.lang==='ja'?1:rate,token) : await speak(stage.text,stage.lang,stage.rate,token);
+     const ok = recorded ? await playRecording(stage.lang==='ja'?'ja':stage.rate===rate*.7?'slow':'en',stage.lang==='ja'?stage.rate:rate,token) : await speak(stage.text,stage.lang,stage.rate,token);
      if(!ok) return;
      await new Promise(resolve=>setTimeout(resolve,Number($('gap').value)));
      if(token!==generation) return;

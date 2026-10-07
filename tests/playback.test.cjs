@@ -54,7 +54,7 @@ test('recorded audio follows all six steps without using device speech',async()=
  assert.deepEqual(requests,['0-en.mp3','0-en.mp3','0-slow.mp3','0-ja.mp3','0-en.mp3','0-en.mp3']);
  assert.equal(calls.length,6);
  assert.ok(calls.every(c=>c.url==='blob:test'));
- assert.deepEqual(calls.map(c=>c.rate),[.9,.9,.9,1,.9,.9]);
+ assert.deepEqual(calls.map(c=>c.rate),[.9,.9,.9,1.2,.9,.9]);
  assert.equal(get('phase').textContent,'完了');
 });
 test('missing recorded file reports error without silent device speech fallback',async()=>{
